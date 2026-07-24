@@ -17,6 +17,8 @@ def test_end_to_end_mock():
         devices = c.get("/api/devices", headers=H).json()
         assert len(devices) == 2
         udid = devices[0]["udid"]
+        # logical screen size is exposed for native tap mapping
+        assert devices[0]["point_w"] and devices[0]["point_h"]
 
         assert "tiktok_upload" in c.get("/api/scenarios", headers=H).json()
 

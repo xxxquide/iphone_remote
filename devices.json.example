@@ -7,7 +7,9 @@
     "mjpeg_port": 9100,
     "tiktok_bundle_id": "com.zhiliaoapp.musically",
     "vpn_expected_region": "US",
-    "scale": 3.0
+    "scale": 3.0,
+    "point_w": 430,
+    "point_h": 932
   },
   {
     "udid": "REPLACE-WITH-REAL-UDID-XSMAX",
@@ -17,6 +19,8 @@
     "mjpeg_port": 9101,
     "tiktok_bundle_id": "com.zhiliaoapp.musically",
     "vpn_expected_region": "US",
-    "scale": 3.0
+    "scale": 3.0,
+    "point_w": 414,
+    "point_h": 896
   }
 ]

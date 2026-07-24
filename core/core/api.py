@@ -45,6 +45,7 @@ async def _startup() -> None:
             "wda": "ready" if settings.mock_mode else "down",
             "tunnel": "up" if settings.mock_mode else "down",
             "ip": None, "vpn_region": d.vpn_expected_region, "profile_days_left": None,
+            "point_w": d.point_w, "point_h": d.point_h,
         })
     scheduler.start()
     await scheduler.recover()                 # re-queue unfinished tasks after a restart

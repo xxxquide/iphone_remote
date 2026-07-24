@@ -16,6 +16,8 @@ class DeviceInfo(BaseModel):
     ip: Optional[str] = None
     vpn_region: Optional[str] = None
     profile_days_left: Optional[int] = None  # WDA signing profile validity
+    point_w: Optional[float] = None          # logical screen size (points) for tap mapping
+    point_h: Optional[float] = None
 
 
 class TapRequest(BaseModel):

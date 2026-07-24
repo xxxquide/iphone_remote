@@ -8,10 +8,14 @@ struct Device: Identifiable, Codable {
     var wda: String
     var tunnel: String
     var ip: String?
+    var pointW: Double?
+    var pointH: Double?
     var id: String { udid }
 
     enum CodingKeys: String, CodingKey {
         case udid, name, ios, status, wda, tunnel, ip
+        case pointW = "point_w"
+        case pointH = "point_h"
     }
 }
 

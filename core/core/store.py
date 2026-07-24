@@ -17,7 +17,8 @@ SCHEMA = """
 CREATE TABLE IF NOT EXISTS devices (
     udid TEXT PRIMARY KEY,
     name TEXT, ios TEXT, status TEXT, wda TEXT, tunnel TEXT,
-    ip TEXT, vpn_region TEXT, profile_days_left INTEGER, updated REAL
+    ip TEXT, vpn_region TEXT, profile_days_left INTEGER,
+    point_w REAL, point_h REAL, updated REAL
 );
 CREATE TABLE IF NOT EXISTS accounts (
     id TEXT PRIMARY KEY, platform TEXT, handle TEXT, udid TEXT,

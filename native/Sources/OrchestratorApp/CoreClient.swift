@@ -8,8 +8,8 @@ final class CoreClient: ObservableObject {
     @Published var connected = false
     @Published var lastEvent: String = ""
 
-    private let base = URL(string: "http://127.0.0.1:8787")!
-    private let token = "dev-local-token"          // read from Keychain in Phase 5
+    let baseURL = URL(string: "http://127.0.0.1:8787")!
+    let apiToken = "dev-local-token"               // read from Keychain in Phase 5
     private var ws: URLSessionWebSocketTask?
 
     func start() async {
@@ -18,9 +18,9 @@ final class CoreClient: ObservableObject {
     }
 
     private func authed(_ path: String, method: String = "GET", body: Data? = nil) -> URLRequest {
-        var req = URLRequest(url: base.appendingPathComponent(path))
+        var req = URLRequest(url: baseURL.appendingPathComponent(path))
         req.httpMethod = method
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        req.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         req.setValue("application/json", forHTTPHeaderField: "Content-Type")
         req.httpBody = body
         return req
@@ -52,8 +52,9 @@ final class CoreClient: ObservableObject {
 
     // MARK: WebSocket events
     private func connectWS() {
-        var req = URLRequest(url: URL(string: "ws://127.0.0.1:8787/ws")!)
-        req.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
+        let wsURL = URL(string: "ws://\(baseURL.host ?? "127.0.0.1"):\(baseURL.port ?? 8787)/ws")!
+        var req = URLRequest(url: wsURL)
+        req.setValue("Bearer \(apiToken)", forHTTPHeaderField: "Authorization")
         ws = URLSession.shared.webSocketTask(with: req)
         ws?.resume()
         connected = true

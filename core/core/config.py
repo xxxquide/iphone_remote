@@ -45,6 +45,8 @@ class DeviceConfig:
     tiktok_bundle_id: str = "com.zhiliaoapp.musically"  # VERIFY on device (Phase 0)
     vpn_expected_region: str = ""  # e.g. "US"; empty = skip IP verification
     scale: float = 3.0             # screenshot px -> logical points (both phones = @3x)
+    point_w: float = 0.0           # logical screen width in points (for tap mapping)
+    point_h: float = 0.0           # logical screen height in points
 
 
 @dataclass
@@ -78,9 +80,11 @@ def _load_devices() -> list[DeviceConfig]:
     # Mock defaults mirroring the target setup.
     return [
         DeviceConfig(udid="MOCK-15PM-0001", name="iPhone 15 Pro Max", ios="26",
-                     wda_port=8100, mjpeg_port=9100, vpn_expected_region="US"),
+                     wda_port=8100, mjpeg_port=9100, vpn_expected_region="US",
+                     point_w=430, point_h=932),
         DeviceConfig(udid="MOCK-XSMAX-0002", name="iPhone XS Max", ios="18",
-                     wda_port=8101, mjpeg_port=9101, vpn_expected_region="US"),
+                     wda_port=8101, mjpeg_port=9101, vpn_expected_region="US",
+                     point_w=414, point_h=896),
     ]
 
 
