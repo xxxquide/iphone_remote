@@ -36,9 +36,20 @@ single engine and is never duplicated.
 Run these from Finder — each one prints a clear report and waits before closing.
 They are idempotent and safe to re-run.
 
+**First time, run this one line in Terminal once** (GitHub's API can't ship the
+executable bit, so the scripts start out non-clickable):
+
+```bash
+cd ~/Downloads/iphone_remote && chmod +x *.command && ./START-HERE.command
+```
+
+`START-HERE.command` makes every script double-clickable forever, then runs the
+full setup. After that you never need the terminal again.
+
 | File | What it does |
 |---|---|
-| `0-update.command` | Pull my latest changes, refresh deps, re-run tests + doctor |
+| `START-HERE.command` | Fix permissions on all scripts + run full setup (use this first) |
+| `0-update.command` | Pull my latest changes, `chmod +x` again, refresh deps, re-run tests + doctor |
 | `1-setup.command` | Install **everything**: Xcode CLT, Homebrew, ffmpeg, **Node ≥20.19**, Appium + xcuitest, go-ios, Python venv + deps, pymobiledevice3, build `visionocr`, create `.env` with random tokens, run tests + doctor |
 | `2-run.command` | Start the core and open the dashboard automatically (frees a stale port first) |
 | `3-doctor.command` | Full readiness report: environment, tests, Phase 0 doctor |
