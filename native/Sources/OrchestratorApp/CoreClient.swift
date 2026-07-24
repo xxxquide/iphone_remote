@@ -64,10 +64,15 @@ final class CoreClient: ObservableObject {
     private func receive() {
         ws?.receive { [weak self] result in
             guard let self else { return }
-            if case .success(.string(let text)) = result {
-                Task { @MainActor in self.lastEvent = text }
+            switch result {
+            case .success(let message):
+                if case .string(let text) = message {
+                    Task { @MainActor in self.lastEvent = text }
+                }
+                Task { @MainActor in self.receive() }      // re-arm on the main actor
+            case .failure:
+                Task { @MainActor in self.connected = false }   // stop; connection closed
             }
-            self.receive()
         }
     }
 }

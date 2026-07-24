@@ -75,9 +75,12 @@ cd native && swift run          # window + menu-bar item; talks to the running c
 ## Tests
 ```bash
 cd core && pip install -r requirements-dev.txt
-PYTHONPATH=. pytest tests       # 26 passed — scenarios, targeting, templates, vpn, secrets,
-                                # API e2e, vision-LLM, mid-step resume, Phase 0 doctor
+PYTHONPATH=. python -m pytest tests    # 26 passed — scenarios, targeting, templates, vpn,
+                                       # secrets, API e2e, vision-LLM, resume, Phase 0 doctor
 ```
+> Use `python -m pytest` (not bare `pytest`): with the venv active it guarantees the
+> venv interpreter/deps. Bare `pytest` can resolve to another install (e.g. a conda
+> base env) that lacks `aiosqlite`/`fastapi`, giving a misleading ImportError.
 
 ## Phase 0 doctor
 One command validates the real-device setup (tools, devices, WDA, tunnel, TikTok

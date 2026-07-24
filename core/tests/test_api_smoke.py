@@ -2,6 +2,9 @@
 
 Deliberately avoids Starlette's TestClient (its anyio portal + background tasks
 can hang teardown in some sandboxes). Everything runs in one asyncio loop.
+
+Run with:  python -m pytest tests   (NOT bare `pytest`, which can resolve to a
+different interpreter, e.g. a conda base env, that lacks the venv's deps).
 """
 import asyncio
 

@@ -12,11 +12,11 @@ run-real:         ## start core against real devices (needs Phase 0 done)
 native:           ## run the SwiftUI client (macOS)
 	cd native && swift run
 
-test:             ## run the test suite
-	cd core && . .venv/bin/activate && PYTHONPATH=. pytest tests
+test:             ## run the test suite (python -m pytest avoids PATH/conda shadowing)
+	cd core && . .venv/bin/activate && PYTHONPATH=. python -m pytest tests
 
-doctor:           ## Phase 0 doctor — validate the real-device setup
-	cd core && . .venv/bin/activate && PYTHONPATH=. python -m core.phase0
+doctor:           ## Phase 0 doctor — validate the real-device setup (report is the signal)
+	cd core && . .venv/bin/activate && PYTHONPATH=. python -m core.phase0 || true
 
 phase0:           ## low-level smoke-test a single device (pass UDID=...)
 	bash core/scripts/phase0_smoke.sh $(UDID)
