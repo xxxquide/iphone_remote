@@ -8,28 +8,47 @@ set -uo pipefail
 cd "$(dirname "$0")"
 REPO="$(pwd)"
 
+# --- self-protection -------------------------------------------------------
+# `git pull` can REWRITE this very file while bash is still reading it (bash
+# reads scripts lazily, by byte offset), which would make it execute garbage
+# from the middle of the new file. So we re-exec from a temporary copy first
+# and do all git work from there. No `git pull` needed before running me.
+if [ "${ORCH_UPDATE_DETACHED:-0}" != "1" ]; then
+  # `mktemp -t NAME` is macOS-style; the XXXXXX form works on macOS AND Linux.
+  SELF_COPY="$(mktemp "${TMPDIR:-/tmp}/orch-update.XXXXXX")"
+  cp "$0" "$SELF_COPY"
+  chmod +x "$SELF_COPY"
+  ORCH_UPDATE_DETACHED=1 ORCH_REPO="$REPO" exec /bin/bash "$SELF_COPY"
+fi
+# Running from the temp copy now: work on the real repo.
+REPO="${ORCH_REPO:-$REPO}"
+cd "$REPO"
+trap 'rm -f "$0"' EXIT           # clean the temp copy on the way out
+
 # Shared bootstrap: fixes PATH (keg-only node@22, npm globals, visionocr),
 # provides step/ok/warn/bad helpers. Scripts run under bash and do NOT read
 # ~/.zshrc, so without this Appium/node would look missing or too old.
 # shellcheck disable=SC1091
-source "$(dirname "$0")/orch-lib.sh"
-
-ok()   { echo "  ${GREEN}✓${RESET} $*"; }
+source "$REPO/orch-lib.sh"
 
 echo "${BOLD}iphone-orchestrator · update${RESET}"
 
 step "Pulling latest"
 BEFORE="$(git rev-parse --short HEAD 2>/dev/null || echo none)"
-if [ -n "$(git status --porcelain 2>/dev/null)" ]; then
-  warn "you have local changes — stashing them (restore later: git stash pop)"
-  git stash push -u -m "auto-stash by 0-update.command" >/dev/null 2>&1 || true
+# Only TRACKED modifications can block a fast-forward. Untracked local files
+# (.env, devices.json, data/) are yours — never stash those.
+TRACKED_DIRTY="$(git status --porcelain --untracked-files=no 2>/dev/null)"
+if [ -n "$TRACKED_DIRTY" ]; then
+  warn "you modified tracked files — stashing them (restore later: git stash pop)"
+  echo "$TRACKED_DIRTY" | sed 's/^/      /'
+  git stash push -m "auto-stash by 0-update.command" >/dev/null 2>&1 || true
 fi
 git pull --ff-only || warn "pull failed (check your network / branch)"
 AFTER="$(git rev-parse --short HEAD 2>/dev/null || echo none)"
 [ "$BEFORE" = "$AFTER" ] && ok "already up to date ($AFTER)" || ok "updated: $BEFORE -> $AFTER"
 
-step "Making .command files executable"
-chmod +x ./*.command 2>/dev/null && ok "done"
+step "Making scripts executable"
+chmod +x ./*.command ./orch-lib.sh core/scripts/*.sh 2>/dev/null && ok "done"
 
 step "Refreshing Python deps"
 if [ -d core/.venv ]; then
