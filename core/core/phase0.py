@@ -112,8 +112,21 @@ def check_node() -> Check:
     except Exception:  # noqa: BLE001
         return Check("runtime: node", Status.WARN, "version unreadable", "")
     ok = (major > 20) or (major == 20 and minor >= 19)
-    return Check("runtime: node", Status.PASS if ok else Status.FAIL, out,
-                 "" if ok else "Appium 3 needs Node >=20.19 — run ./1-setup.command")
+    if ok:
+        return Check("runtime: node", Status.PASS, out)
+    # A modern Node may exist but not be on THIS process's PATH (keg-only
+    # node@22 lives outside the default PATH and .command scripts don't read
+    # ~/.zshrc). Say so, because "upgrade Node" would be the wrong advice.
+    for pfx in ("/opt/homebrew/opt/node@24", "/opt/homebrew/opt/node@22",
+                "/usr/local/opt/node@24", "/usr/local/opt/node@22"):
+        cand = Path(pfx) / "bin" / "node"
+        if cand.exists():
+            return Check("runtime: node", Status.FAIL,
+                         f"{out} on PATH, but {pfx} exists (not on PATH here)",
+                         "run scripts via ./3-doctor.command (it fixes PATH), "
+                         "or: export PATH=\"" + pfx + "/bin:$PATH\"")
+    return Check("runtime: node", Status.FAIL, out,
+                 "Appium 3 needs Node >=20.19 — run ./1-setup.command")
 
 
 def ios_tooling_warning(ios: str) -> Optional[Check]:
@@ -149,6 +162,21 @@ async def run_all() -> list[Check]:
         else Check("config: media token", Status.WARN, "still the default",
                    "set ORCH_MEDIA_TOKEN in .env before real media handoff"))
     checks.append(Check("config: LAN host", Status.PASS, settings.lan_host or "unknown"))
+
+    # devices.json still full of placeholders? That's not a configured device.
+    dj = REPO_ROOT / "devices.json"
+    if dj.exists():
+        try:
+            import json as _json
+            raw = _json.loads(dj.read_text(encoding="utf-8"))
+            holders = [d for d in raw if "REPLACE-WITH-REAL-UDID" in str(d.get("udid", ""))]
+            if holders:
+                checks.append(Check("config: devices.json", Status.WARN,
+                                    f"{len(holders)} placeholder entry(ies) — ignored",
+                                    "run ./4-real-mode.command to write real UDIDs"))
+        except Exception:  # noqa: BLE001
+            checks.append(Check("config: devices.json", Status.WARN, "unreadable JSON",
+                                "delete it and re-run ./4-real-mode.command"))
     if settings.llm_enabled and not settings.llm_api_key:
         checks.append(Check("config: LLM", Status.WARN, "enabled but no API key",
                             "set ORCH_LLM_API_KEY or disable ORCH_LLM_ENABLED"))

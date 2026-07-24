@@ -12,17 +12,23 @@
 # ============================================================================
 set -uo pipefail
 cd "$(dirname "$0")"
+REPO="$(pwd)"
 
-BOLD=$'\033[1m'; DIM=$'\033[2m'; GREEN=$'\033[32m'; BLUE=$'\033[34m'; RESET=$'\033[0m'
+# Shared bootstrap: fixes PATH (keg-only node@22, npm globals, visionocr) and
+# provides step/ok/warn/bad helpers. Scripts run under bash and do NOT read
+# ~/.zshrc, so without this Appium/node would look missing or too old.
+# shellcheck disable=SC1091
+source "$REPO/orch-lib.sh"
 
 echo "${BOLD}iphone-orchestrator · START HERE${RESET}"
 
-echo; echo "${BLUE}${BOLD}==> making every script double-clickable${RESET}"
+step "making every script double-clickable"
 chmod +x ./*.command 2>/dev/null
+chmod +x ./orch-lib.sh 2>/dev/null
 chmod +x core/scripts/*.sh 2>/dev/null
-echo "  ${GREEN}✓${RESET} done — you can double-click any N-*.command from now on"
+ok "done — you can double-click any N-*.command from now on"
 
-echo; echo "${BLUE}${BOLD}==> running full setup (this installs everything)${RESET}"
+step "running full setup (this installs everything)"
 echo "${DIM}Takes a few minutes on first run. Follow any prompts.${RESET}"
 ./1-setup.command
 

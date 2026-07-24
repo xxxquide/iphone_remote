@@ -8,17 +8,24 @@ set -uo pipefail
 cd "$(dirname "$0")"
 REPO="$(pwd)"
 
-BOLD=$'\033[1m'; DIM=$'\033[2m'; GREEN=$'\033[32m'; YELLOW=$'\033[33m'; RESET=$'\033[0m'
+# Shared bootstrap: fixes PATH (keg-only node@22, npm globals, visionocr),
+# provides step/ok/warn/bad helpers. Scripts run under bash and do NOT read
+# ~/.zshrc, so without this Appium/node would look missing or too old.
+# shellcheck disable=SC1091
+source "$(dirname "$0")/orch-lib.sh"
+
 ok()   { echo "  ${GREEN}✓${RESET} $*"; }
-warn() { echo "  ${YELLOW}!${RESET} $*"; }
 
 if [ ! -d core/.venv ]; then
   echo "${YELLOW}No venv yet — run ./1-setup.command first.${RESET}"
   echo "Press Return to close…"; read -r _; exit 1
 fi
 
-PORT="$(grep -E '^ORCH_PORT=' .env 2>/dev/null | cut -d= -f2)"; PORT="${PORT:-8787}"
-MODE="$(grep -E '^ORCH_MOCK=' .env 2>/dev/null | cut -d= -f2)"; MODE="${MODE:-true}"
+# Read .env values the same way the app does: strip inline comments + spaces.
+env_val() { grep -E "^$1=" .env 2>/dev/null | tail -1 | cut -d= -f2- \
+            | sed -e 's/[[:space:]]*#.*$//' -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//'; }
+PORT="$(env_val ORCH_PORT)"; PORT="${PORT:-8787}"
+MODE="$(env_val ORCH_MOCK)"; MODE="${MODE:-true}"
 [ "$MODE" = "false" ] && MODE_LABEL="REAL DEVICES" || MODE_LABEL="MOCK"
 
 echo "${BOLD}iphone-orchestrator · run${RESET}   mode: ${BOLD}$MODE_LABEL${RESET}   port: $PORT"

@@ -55,7 +55,8 @@ def _load_dotenv(path: Path) -> None:
         os.environ.setdefault(key.strip(), _unquote(_strip_inline_comment(val)))
 
 
-_load_dotenv(REPO_ROOT / ".env")
+if os.getenv("ORCH_SKIP_DOTENV", "").strip() not in {"1", "true", "yes"}:
+    _load_dotenv(REPO_ROOT / ".env")
 
 
 def _bool(name: str, default: bool) -> bool:
@@ -99,7 +100,7 @@ class Settings:
     port: int = 8787
     mock_mode: bool = True         # start in mock mode: no real devices needed
     api_token: str = "dev-local-token"  # simple bearer for the local API
-    db_path: str = str(CORE_ROOT / "data" / "orchestrator.db")
+    db_path: str = str(CORE_ROOT / "data" / "orchestrator.db")  # override: ORCH_DB
     media_dir: str = str(CORE_ROOT / "data" / "media")
     web_dir: str = str(REPO_ROOT / "web")
     # signing (free Apple ID) — used by signing/resign_wda.py
@@ -124,11 +125,24 @@ class Settings:
     devices: list[DeviceConfig] = field(default_factory=list)
 
 
+PLACEHOLDER_UDID = "REPLACE-WITH-REAL-UDID"
+
+
 def _load_devices() -> list[DeviceConfig]:
+    """Devices from devices.json, else built-in mock devices.
+
+    Placeholder entries (the `REPLACE-WITH-REAL-UDID...` rows that ship in
+    devices.json.example) are IGNORED: they are not real devices, and letting
+    them through made the doctor report a bogus PASS and pushed the mock
+    devices out of the registry. Run 4-real-mode.command to fill in real UDIDs.
+    """
     path = REPO_ROOT / "devices.json"
-    if path.exists():
+    skip = os.getenv("ORCH_SKIP_DEVICES_FILE", "").strip() in {"1", "true", "yes"}
+    if path.exists() and not skip:
         raw = json.loads(path.read_text(encoding="utf-8"))
-        return [DeviceConfig(**d) for d in raw]
+        real = [d for d in raw if PLACEHOLDER_UDID not in str(d.get("udid", ""))]
+        if real:
+            return [DeviceConfig(**d) for d in real]
     # Mock defaults mirroring the target setup.
     return [
         DeviceConfig(udid="MOCK-15PM-0001", name="iPhone 15 Pro Max", ios="26",
@@ -159,6 +173,10 @@ def load_settings() -> Settings:
         port=_int("ORCH_PORT", 8787),
         mock_mode=_bool("ORCH_MOCK", True),
         api_token=_str("ORCH_TOKEN", "dev-local-token"),
+        # Tests set ORCH_DB to an isolated file; without honouring it they ran
+        # against the real database and saw leftover devices/tasks.
+        db_path=_str("ORCH_DB", str(CORE_ROOT / "data" / "orchestrator.db")),
+        media_dir=_str("ORCH_MEDIA_DIR", str(CORE_ROOT / "data" / "media")),
         apple_id=_str("ORCH_APPLE_ID", ""),
         tunnel_backend=_str("ORCH_TUNNEL", "pymobiledevice3"),
         lan_host=_str("ORCH_LAN_HOST", ""),

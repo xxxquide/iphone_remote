@@ -8,7 +8,12 @@ set -uo pipefail
 cd "$(dirname "$0")"
 REPO="$(pwd)"
 
-BOLD=$'\033[1m'; DIM=$'\033[2m'; BLUE=$'\033[34m'; YELLOW=$'\033[33m'; RESET=$'\033[0m'
+# Shared bootstrap: fixes PATH (keg-only node@22, npm globals, visionocr),
+# provides step/ok/warn/bad helpers. Scripts run under bash and do NOT read
+# ~/.zshrc, so without this Appium/node would look missing or too old.
+# shellcheck disable=SC1091
+source "$(dirname "$0")/orch-lib.sh"
+
 
 if [ ! -d core/.venv ]; then
   echo "${YELLOW}No venv yet — run ./1-setup.command first.${RESET}"
