@@ -31,6 +31,30 @@ iphone-orchestrator/
 Both UIs talk to the **one** core API on `127.0.0.1:8787`, so logic lives in a
 single engine and is never duplicated.
 
+## Double-click scripts (no terminal knowledge needed)
+
+Run these from Finder — each one prints a clear report and waits before closing.
+They are idempotent and safe to re-run.
+
+| File | What it does |
+|---|---|
+| `0-update.command` | Pull my latest changes, refresh deps, re-run tests + doctor |
+| `1-setup.command` | Install **everything**: Xcode CLT, Homebrew, ffmpeg, **Node ≥20.19**, Appium + xcuitest, go-ios, Python venv + deps, pymobiledevice3, build `visionocr`, create `.env` with random tokens, run tests + doctor |
+| `2-run.command` | Start the core and open the dashboard automatically (frees a stale port first) |
+| `3-doctor.command` | Full readiness report: environment, tests, Phase 0 doctor |
+| `4-real-mode.command` | Guided MOCK→REAL switch: detect connected iPhones, write real UDIDs + screen geometry into `devices.json`, mount the DDI, flip `ORCH_MOCK=false` |
+| `5-resign-wda.command` | Re-sign WebDriverAgent (free Apple ID certs expire every 7 days) |
+
+First time: **`1-setup.command` → `2-run.command`**.
+If a script isn't executable: `chmod +x *.command` (or run `0-update.command`).
+
+### Known landmines these scripts handle for you
+- **Node 18 breaks Appium 3** (`tracingChannel is not a function`) → installs `node@22` and puts it on PATH.
+- **`brew install go-ios` does not exist** (not in Homebrew core) → installed via `npm i -g go-ios`.
+- **`visionocr` needs no sudo** → built inside the repo; the doctor looks for it there.
+- **bare `pytest` may hit a conda Python** → always invoked as `python -m pytest`.
+- The doctor **runs** each tool instead of trusting PATH, so "installed but broken" shows as FAIL.
+
 ## Quick start (mock mode — no phones needed)
 
 ```bash

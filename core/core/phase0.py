@@ -13,10 +13,13 @@ In mock mode (default) device checks are marked SKIP so the report still renders
 from __future__ import annotations
 
 import asyncio
+import os
 import shutil
+import subprocess
 import sys
 from dataclasses import dataclass
 from enum import Enum
+from pathlib import Path
 from typing import Optional
 
 import httpx
@@ -40,24 +43,77 @@ class Check:
     fix: str = ""
 
 
+REPO_ROOT = Path(__file__).resolve().parents[2]
+# (cmd, description, fix, verify_args) — verify_args actually RUNS the tool, because
+# "present on PATH" is not the same as "works" (e.g. Appium installed under an
+# unsupported Node crashes on import).
 REQUIRED_TOOLS = [
-    ("xcrun", "Xcode CLT / devicectl", "xcode-select --install (and install Xcode 26)"),
-    ("appium", "Appium server", "npm i -g appium && appium driver install xcuitest"),
-    ("pymobiledevice3", "iOS 17+ tunnel + screen stream", "pip install -U pymobiledevice3"),
-    ("ffmpeg", "media / stream tooling", "brew install ffmpeg"),
+    ("xcrun", "Xcode CLT / devicectl", "xcode-select --install (and install Xcode 26)",
+     ["--version"]),
+    ("appium", "Appium server", "./1-setup.command  (installs Node >=20 + Appium)",
+     ["--version"]),
+    ("pymobiledevice3", "iOS 17+ tunnel + screen stream", "pip install -U pymobiledevice3",
+     ["version"]),
+    ("ffmpeg", "media / stream tooling", "brew install ffmpeg", ["-version"]),
 ]
 OPTIONAL_TOOLS = [
-    ("ios", "go-ios (alternative tunnel)", "brew install go-ios"),
+    ("ios", "go-ios (alternative tunnel)", "npm i -g go-ios   (NOT in Homebrew core)",
+     ["--help"]),
     ("visionocr", "Apple Vision OCR helper",
-     "cd tools/visionocr && swift build -c release && cp .build/release/visionocr /usr/local/bin/"),
+     "cd tools/visionocr && swift build -c release   (./1-setup.command does this)", None),
 ]
+# Extra places we accept a tool from, so no sudo/PATH surgery is needed.
+LOCAL_TOOL_PATHS = {
+    "visionocr": [REPO_ROOT / "tools" / "visionocr" / ".build" / "release" / "visionocr"],
+}
 
 
-def check_tool(cmd: str, desc: str, fix: str, required: bool = True) -> Check:
-    if shutil.which(cmd):
-        return Check(f"tool: {cmd}", Status.PASS, desc)
-    return Check(f"tool: {cmd}", Status.FAIL if required else Status.WARN,
-                 f"{desc} — not found on PATH", fix)
+def _resolve(cmd: str) -> Optional[str]:
+    found = shutil.which(cmd)
+    if found:
+        return found
+    for p in LOCAL_TOOL_PATHS.get(cmd, []):
+        if p.exists() and os.access(p, os.X_OK):
+            return str(p)
+    return None
+
+
+def check_tool(cmd: str, desc: str, fix: str, required: bool = True,
+               verify: Optional[list[str]] = None) -> Check:
+    path = _resolve(cmd)
+    if not path:
+        return Check(f"tool: {cmd}", Status.FAIL if required else Status.WARN,
+                     f"{desc} — not found", fix)
+    if verify:
+        try:
+            res = subprocess.run([path, *verify], capture_output=True, text=True, timeout=90)
+            if res.returncode != 0:
+                err = (res.stderr or res.stdout or "").strip().splitlines()
+                hint = err[-1][:120] if err else f"exit {res.returncode}"
+                return Check(f"tool: {cmd}", Status.FAIL if required else Status.WARN,
+                             f"{desc} — installed but FAILS to run: {hint}", fix)
+        except Exception as e:  # noqa: BLE001
+            return Check(f"tool: {cmd}", Status.FAIL if required else Status.WARN,
+                         f"{desc} — cannot execute ({e})", fix)
+    return Check(f"tool: {cmd}", Status.PASS, desc)
+
+
+def check_node() -> Check:
+    """Appium 3 needs Node >= 20.19 (older Node crashes inside lru-cache)."""
+    path = shutil.which("node")
+    if not path:
+        return Check("runtime: node", Status.WARN, "not installed (needed by Appium)",
+                     "./1-setup.command  (or: brew install node)")
+    try:
+        out = subprocess.run([path, "--version"], capture_output=True, text=True,
+                             timeout=20).stdout.strip()
+        major = int(out.lstrip("v").split(".")[0])
+        minor = int(out.lstrip("v").split(".")[1])
+    except Exception:  # noqa: BLE001
+        return Check("runtime: node", Status.WARN, "version unreadable", "")
+    ok = (major > 20) or (major == 20 and minor >= 19)
+    return Check("runtime: node", Status.PASS if ok else Status.FAIL, out,
+                 "" if ok else "Appium 3 needs Node >=20.19 — run ./1-setup.command")
 
 
 def ios_tooling_warning(ios: str) -> Optional[Check]:
@@ -97,11 +153,12 @@ async def run_all() -> list[Check]:
         checks.append(Check("config: LLM", Status.WARN, "enabled but no API key",
                             "set ORCH_LLM_API_KEY or disable ORCH_LLM_ENABLED"))
 
-    # --- tools ---
-    for cmd, desc, fix in REQUIRED_TOOLS:
-        checks.append(check_tool(cmd, desc, fix, required=True))
-    for cmd, desc, fix in OPTIONAL_TOOLS:
-        checks.append(check_tool(cmd, desc, fix, required=False))
+    # --- runtimes & tools (verified by actually running them) ---
+    checks.append(check_node())
+    for cmd, desc, fix, verify in REQUIRED_TOOLS:
+        checks.append(check_tool(cmd, desc, fix, required=True, verify=verify))
+    for cmd, desc, fix, verify in OPTIONAL_TOOLS:
+        checks.append(check_tool(cmd, desc, fix, required=False, verify=verify))
 
     # --- devices ---
     listed = await devicectl.list_devices()
