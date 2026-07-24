@@ -69,6 +69,14 @@ class Settings:
     shortcut_save_photos: str = "OrchSaveToPhotos"  # user-created Shortcut name
     # health/recovery loop
     health_interval_s: int = 10
+    # vision-LLM targeting (cascade level 4)
+    llm_enabled: bool = False
+    llm_base_url: str = "https://api.openai.com/v1"
+    llm_model: str = "gpt-4o-mini"
+    llm_api_key: str = ""          # from ORCH_LLM_API_KEY (or Keychain); never hardcode
+    llm_max_per_min: int = 20      # rate limit
+    llm_cache_ttl_s: int = 60
+    llm_cache_size: int = 128
     devices: list[DeviceConfig] = field(default_factory=list)
 
 
@@ -111,6 +119,11 @@ def load_settings() -> Settings:
         tunnel_backend=os.getenv("ORCH_TUNNEL", "pymobiledevice3"),
         lan_host=os.getenv("ORCH_LAN_HOST", ""),
         media_token=os.getenv("ORCH_MEDIA_TOKEN", "change-me-media-token"),
+        llm_enabled=_bool("ORCH_LLM_ENABLED", False),
+        llm_base_url=os.getenv("ORCH_LLM_BASE_URL", "https://api.openai.com/v1"),
+        llm_model=os.getenv("ORCH_LLM_MODEL", "gpt-4o-mini"),
+        llm_api_key=os.getenv("ORCH_LLM_API_KEY", ""),
+        llm_max_per_min=int(os.getenv("ORCH_LLM_MAX_PER_MIN", "20")),
         devices=_load_devices(),
     )
     if not s.lan_host:

@@ -13,11 +13,13 @@ the engine can log how a target was found and run a post-check.
 """
 from __future__ import annotations
 
+import asyncio
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable, Optional
 
 from ..bridge.wda import WDAClient
 from ..config import settings
+from . import llm as llm_mod
 from . import ocr as ocr_mod
 from . import templates as tmpl_mod
 
@@ -45,12 +47,14 @@ class Hit:
 class Targeter:
     def __init__(self, wda: WDAClient, udid: str, scale: float = 3.0,
                  screenshotter: Optional[Screenshotter] = None,
-                 ocr: Optional[ocr_mod.OCRBackend] = None) -> None:
+                 ocr: Optional[ocr_mod.OCRBackend] = None,
+                 llm: Optional[llm_mod.VisionLLM] = None) -> None:
         self.wda = wda
         self.udid = udid
         self.scale = scale or 1.0
         self.screenshotter = screenshotter
         self.ocr = ocr or ocr_mod.get_ocr()
+        self.llm = llm or llm_mod.get_llm()
         self._shot_cache: Optional[str] = None
 
     async def find(self, spec: TargetSpec) -> Optional[Hit]:
@@ -114,8 +118,16 @@ class Targeter:
         return Hit(m.x / self.scale, m.y / self.scale, "template", m.score)
 
     async def _via_llm(self, describe: str) -> Optional[Hit]:
-        # TODO(Phase 4+): screenshot + prompt -> vision model -> coords.
-        return None
+        if not self.llm.available():
+            return None
+        shot = await self._screenshot()
+        if not shot:
+            return None
+        # Vision-LLM call is sync/blocking; run it off the event loop.
+        coord = await asyncio.to_thread(self.llm.locate, shot, describe)
+        if not coord:
+            return None
+        return Hit(coord[0] / self.scale, coord[1] / self.scale, "llm", 0.6)
 
 
 def _search_ax(node: Any, label: str) -> Optional[dict]:

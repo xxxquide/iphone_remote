@@ -56,8 +56,8 @@ cd native && swift run          # window + menu-bar item; talks to the running c
 3. `cp .env.example .env` and set `ORCH_MOCK=false`.
 4. `python -m core` — the Device Bridge now drives real devices.
 
-## Status: what's real vs stubbed  (v0.2.1)
-- **Real & runnable (tested in mock, `13 passed`):** core API (REST+WS), event bus,
+## Status: what's real vs stubbed  (v0.3.0)
+- **Real & runnable (tested in mock, `19 passed`):** core API (REST+WS), event bus,
   SQLite store, scheduler with idempotency **+ restart re-queue of unfinished tasks**,
   scenario engine + YAML, browser dashboard, mock devices/live-view, health/recovery
   loop, bridge command construction.
@@ -67,9 +67,10 @@ cd native && swift run          # window + menu-bar item; talks to the running c
   route); **VPN IP verification** (ipify + OCR); **Keychain** secrets (`security`);
   weekly **WDA re-sign** orchestration; **native live-view** — AVFoundation USB
   capture (CoreMediaIO) with **MJPEG fallback** and click-to-tap mapped to real
-  device points.
-- **Still stubbed (clear TODOs):** the vision-**LLM** targeting level (hook),
-  true mid-step task resume, Keychain-backed API token in the native app.
+  device points; **vision-LLM targeting** (cascade level 4) — screenshot+prompt →
+  coordinates, with TTL cache + rate limit (off unless `ORCH_LLM_ENABLED`+key).
+- **Still stubbed (clear TODOs):** true mid-step task resume, Keychain-backed API
+  token in the native app.
 
 ## Tests
 ```bash
