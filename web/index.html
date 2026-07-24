@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>iPhone Orchestrator — Dashboard</title>
+<link rel="stylesheet" href="/styles.css">
+</head>
+<body>
+<header>
+  <div class="brand">📱 iPhone Orchestrator <span class="tag" id="mode">…</span></div>
+  <div class="conn"><span id="wsdot" class="dot"></span><span id="wsstate">connecting…</span></div>
+</header>
+
+<main>
+  <section class="col devices">
+    <h2>Устройства</h2>
+    <div id="deviceList" class="device-grid"></div>
+
+    <h2>Сценарий</h2>
+    <div class="panel">
+      <label>Сценарий
+        <select id="scenario"></select>
+      </label>
+      <label>media_path
+        <input id="mediaPath" placeholder="/path/to/video.mp4">
+      </label>
+      <label>caption
+        <input id="caption" placeholder="Моё видео #fyp">
+      </label>
+      <button id="runBtn">▶ Запустить на выбранном устройстве</button>
+      <div id="taskState" class="task"></div>
+    </div>
+  </section>
+
+  <section class="col viewer">
+    <h2>Live-view <span id="viewerName" class="muted"></span></h2>
+    <div class="stage">
+      <canvas id="live" width="390" height="844"></canvas>
+      <img id="liveImg" alt="" hidden>
+    </div>
+    <div class="controls">
+      <input id="typeBox" placeholder="текст для ввода…">
+      <button id="typeBtn">⌨ Type</button>
+      <input id="bundleBox" placeholder="com.zhiliaoapp.musically">
+      <button id="launchBtn">🚀 Launch</button>
+    </div>
+    <p class="hint">Клик по экрану = тап по координате (маппинг в точки устройства).</p>
+  </section>
+
+  <section class="col log">
+    <h2>События</h2>
+    <div id="log" class="logbox"></div>
+  </section>
+</main>
+
+<script src="/app.js"></script>
+</body>
+</html>

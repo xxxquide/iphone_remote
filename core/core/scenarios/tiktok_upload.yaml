@@ -1,0 +1,65 @@
+name: tiktok_upload
+platform: tiktok
+description: >
+  Upload a video to TikTok on a managed iPhone. Targets use the vision cascade
+  (ax_label -> text/OCR -> template -> xy). Verify blocks post-check each screen.
+  Any step can be flipped to manual:true for hands-on step-in.
+
+# params expected at run time:
+#   media_path: absolute path to the video to post (host side)
+#   caption:    caption text incl. hashtags
+steps:
+  - action: ensure_vpn
+    name: "VPN connected + IP verified for this device"
+
+  - action: put_media
+    name: "Place video into the device Photos library"
+    value: "{media_path}"           # OPEN SUB-PROBLEM (see docs) — verify in Phase 0
+
+  - action: wake
+    name: "Wake + keep screen awake (Auto-Lock: Never, on power)"
+
+  - action: launch
+    name: "Launch TikTok"
+    value: "com.zhiliaoapp.musically"   # VERIFY bundle id on device (Phase 0)
+
+  - action: tap
+    name: "Tap the + (create) button"
+    target: { ax_label: "Create", template: "assets/tiktok_plus.png", xy: [200, 812] }
+    verify: { text: "Upload" }
+
+  - action: tap
+    name: "Handle camera/library permission (if shown)"
+    target: { text: "Allow" }
+    optional: true
+
+  - action: tap
+    name: "Tap Upload"
+    target: { text: "Upload", ax_label: "Upload" }
+    verify: { text: "Next" }
+
+  - action: tap
+    name: "Select the first video in the library"
+    target: { xy: [80, 300] }        # first grid cell; refine via OCR/template
+
+  - action: tap
+    name: "Editor -> Next"
+    target: { text: "Next", ax_label: "Next" }
+    retries: 3
+
+  - action: tap
+    name: "Focus the caption field"
+    target: { ax_label: "Add caption", text: "Add caption" }
+
+  - action: type
+    name: "Type caption + hashtags"
+    value: "{caption}"
+
+  - action: tap
+    name: "Post"
+    target: { text: "Post", ax_label: "Post" }
+    verify: { text: "Your video is being uploaded" }
+
+  - action: verify
+    name: "Confirm posted (return to profile / success toast)"
+    target: { text: "posted" }

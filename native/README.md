@@ -1,0 +1,29 @@
+# Native client (UI variation A)
+
+SwiftUI menu-bar agent + main window. Talks to the local core service
+(`http://127.0.0.1:8787`) — the same API the browser dashboard uses.
+
+## Two ways to run
+
+### 1. Quick (SwiftPM executable)
+```bash
+cd native
+swift run           # opens a window; menu-bar item appears
+```
+Good for iterating on the UI. Note: menu-bar-only behaviour and TCC
+entitlements need a real app bundle (below).
+
+### 2. Real app (recommended for Phase 4+)
+1. Xcode → New → macOS App (SwiftUI, "OrchestratorApp").
+2. Add all files from `Sources/OrchestratorApp/` to the target.
+3. Signing: your free Apple ID / personal team, **ad-hoc is fine** for personal use.
+4. For a menu-bar-only agent set `LSUIElement = YES` in Info.plist.
+5. Add usage strings you will need in Phase 5:
+   - `NSLocalNetworkUsageDescription` (talk to iPhones over Wi-Fi)
+   - Screen Recording / Accessibility are granted in System Settings at first run.
+
+## What is stubbed
+- `LiveView.swift` renders a placeholder. Phase 1: wire **AVFoundation USB
+  capture** (lowest latency) or reuse the core MJPEG stream.
+- Token is hard-coded; move to Keychain in Phase 5.
+- The core must be running (`cd ../core && python -m core`).

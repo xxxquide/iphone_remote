@@ -1,0 +1,9 @@
+fastapi>=0.111
+uvicorn[standard]>=0.30
+httpx>=0.27
+aiosqlite>=0.20
+pyyaml>=6.0
+numpy>=1.26
+pillow>=10.0
+# optional but recommended for fast, accurate template matching on real screenshots:
+#   opencv-python-headless>=4.9

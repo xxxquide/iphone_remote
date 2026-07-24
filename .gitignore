@@ -1,0 +1,20 @@
+# python
+__pycache__/
+*.pyc
+.venv/
+venv/
+core/data/
+
+# secrets / local config
+.env
+devices.json
+*.p12
+.orch/
+
+# swift / xcode
+native/.build/
+native/*.xcodeproj
+DerivedData/
+
+# os
+.DS_Store

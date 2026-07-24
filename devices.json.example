@@ -1,0 +1,22 @@
+[
+  {
+    "udid": "REPLACE-WITH-REAL-UDID-15PM",
+    "name": "iPhone 15 Pro Max",
+    "ios": "26",
+    "wda_port": 8100,
+    "mjpeg_port": 9100,
+    "tiktok_bundle_id": "com.zhiliaoapp.musically",
+    "vpn_expected_region": "US",
+    "scale": 3.0
+  },
+  {
+    "udid": "REPLACE-WITH-REAL-UDID-XSMAX",
+    "name": "iPhone XS Max",
+    "ios": "18",
+    "wda_port": 8101,
+    "mjpeg_port": 9101,
+    "tiktok_bundle_id": "com.zhiliaoapp.musically",
+    "vpn_expected_region": "US",
+    "scale": 3.0
+  }
+]
