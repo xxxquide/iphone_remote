@@ -23,6 +23,9 @@ source "$REPO/orch-lib.sh"
 echo "${BOLD}iphone-orchestrator · START HERE${RESET}"
 
 step "making every script double-clickable"
+# Tell git to ignore the exec bit FIRST: files arrive as 100644 from the API, so
+# our chmod would otherwise register as a modification and block every git pull.
+git config core.fileMode false 2>/dev/null && ok "git core.fileMode=false (pulls stay unblocked)"
 chmod +x ./*.command 2>/dev/null
 chmod +x ./orch-lib.sh 2>/dev/null
 chmod +x core/scripts/*.sh 2>/dev/null

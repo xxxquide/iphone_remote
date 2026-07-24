@@ -1,0 +1,3 @@
+# Keep line endings sane for shell scripts (CRLF would break the shebang).
+*.command text eol=lf
+*.sh      text eol=lf

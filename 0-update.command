@@ -33,6 +33,21 @@ source "$REPO/orch-lib.sh"
 
 echo "${BOLD}iphone-orchestrator · update${RESET}"
 
+# GitHub's API commits files as 100644, and our chmod +x then shows up as a
+# "modification" (644->755), which BLOCKS every future pull. Telling git to
+# ignore the exec bit in this repo makes the tree clean permanently.
+if [ "$(git config --get core.fileMode 2>/dev/null)" != "false" ]; then
+  git config core.fileMode false
+  ok "git core.fileMode=false (exec-bit churn no longer blocks pulls)"
+fi
+# Drop any pre-existing mode-only diffs recorded before that setting.
+git diff --name-only --diff-filter=M 2>/dev/null | while read -r f; do
+  [ -n "$f" ] || continue
+  if [ -z "$(git diff --numstat -- "$f" | awk '{print $1+$2}' | grep -v '^0$')" ]; then
+    git checkout -- "$f" 2>/dev/null || true
+  fi
+done
+
 step "Pulling latest"
 BEFORE="$(git rev-parse --short HEAD 2>/dev/null || echo none)"
 # Only TRACKED modifications can block a fast-forward. Untracked local files
