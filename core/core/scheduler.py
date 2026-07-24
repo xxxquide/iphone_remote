@@ -6,6 +6,7 @@ to SQLite so a restart mid-task is recoverable.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import uuid
 from typing import Any, Optional
 
@@ -35,8 +36,8 @@ class Scheduler:
     async def recover(self) -> None:
         """Re-queue tasks left unfinished by a previous run (crash/restart).
 
-        Tasks restart from step 0 — idempotency at enqueue prevents duplicate
-        enqueues, but true mid-step resume is a backlog item (docs/ARCHITECTURE).
+        Each task resumes from its persisted `step` (mid-step resume): completed
+        steps are skipped and idempotent `always` setup steps are re-run first.
         """
         for tid in await store.list_pending_task_ids():
             await self._update(tid, state="queued", message="recovered")
@@ -45,6 +46,10 @@ class Scheduler:
     async def stop(self) -> None:
         if self._worker:
             self._worker.cancel()
+            with contextlib.suppress(asyncio.CancelledError):
+                await self._worker
+            self._worker = None
+        self._queue = None          # rebind to the running loop on next start()
 
     async def enqueue(self, scenario: str, udid: str, params: dict[str, Any],
                       idempotency_key: str = "") -> str:
@@ -75,13 +80,20 @@ class Scheduler:
             return
         scenario = load_scenario(task["scenario"])
         udid = task["udid"]
-        await self._update(task_id, state="running", message="running")
-        # Live per-step progress is broadcast by the engine over the WS event
-        # bus (task.progress); the scheduler only persists lifecycle states to
-        # avoid racing writes on the same row.
+        start_step = int(task.get("step") or 0)
+        await self._update(task_id, state="running",
+                           message="resuming" if start_step else "running")
+        # Live per-step progress is broadcast by the engine over the WS event bus
+        # (task.progress). The scheduler persists the completed-step index so a
+        # crash/restart resumes mid-scenario instead of re-running from zero.
         engine = ScenarioEngine(udid)
+
+        async def on_step_done(index: int) -> None:
+            await store.update_task_fields(task_id, step=index + 1)
+
         try:
-            ok = await engine.run(scenario, task.get("params", {}))
+            ok = await engine.run(scenario, task.get("params", {}),
+                                  start_step=start_step, on_step_done=on_step_done)
             await self._update(task_id, state="done" if ok else "failed",
                                message="done" if ok else "failed")
         except Exception as e:  # noqa: BLE001

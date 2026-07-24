@@ -9,7 +9,7 @@ final class CoreClient: ObservableObject {
     @Published var lastEvent: String = ""
 
     let baseURL = URL(string: "http://127.0.0.1:8787")!
-    let apiToken = "dev-local-token"               // read from Keychain in Phase 5
+    let apiToken = KeychainToken.read()            // shared with the core via Keychain
     private var ws: URLSessionWebSocketTask?
 
     func start() async {

@@ -55,3 +55,17 @@ def delete_secret(service: str, account: str) -> bool:
         raise NotAvailable("Keychain only available on macOS")
     return subprocess.run(_del_argv(service, account),
                           capture_output=True).returncode == 0
+
+
+# Shared API token so the native app and the core agree without hardcoding.
+API_SERVICE = "api"
+API_ACCOUNT = "token"
+
+
+def store_api_token(token: str) -> None:
+    """Persist the core's API token to the Keychain (best-effort, macOS only)."""
+    set_secret(API_SERVICE, API_ACCOUNT, token)
+
+
+def get_api_token() -> str | None:
+    return get_secret(API_SERVICE, API_ACCOUNT)

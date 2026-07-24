@@ -19,6 +19,7 @@ class Step:
     verify: dict[str, Any] = field(default_factory=dict)   # post-check target
     optional: bool = False            # e.g. permission dialogs
     manual: bool = False              # pause for human step-in
+    always: bool = False              # re-run on resume (idempotent setup: vpn/wake/launch)
     retries: int = 2
 
 

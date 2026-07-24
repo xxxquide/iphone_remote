@@ -11,6 +11,7 @@ description: >
 steps:
   - action: ensure_vpn
     name: "VPN connected + IP verified for this device"
+    always: true
 
   - action: put_media
     name: "Place video into the device Photos library"
@@ -18,10 +19,12 @@ steps:
 
   - action: wake
     name: "Wake + keep screen awake (Auto-Lock: Never, on power)"
+    always: true
 
   - action: launch
     name: "Launch TikTok"
     value: "com.zhiliaoapp.musically"   # VERIFY bundle id on device (Phase 0)
+    always: true
 
   - action: tap
     name: "Tap the + (create) button"

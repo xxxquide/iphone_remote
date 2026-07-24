@@ -39,15 +39,22 @@ class ScenarioEngine:
         )
         self.on_progress = on_progress
 
-    async def run(self, scenario: Scenario, params: dict[str, Any]) -> bool:
-        for i, step in enumerate(scenario.steps):
-            await self._progress(i, scenario.total_steps, f"{step.action}: {step.name}")
+    async def run(self, scenario: Scenario, params: dict[str, Any],
+                  start_step: int = 0,
+                  on_step_done: Optional[Callable] = None) -> bool:
+        """Execute a scenario. On resume (start_step > 0), idempotent `always`
+        steps before start_step are re-run first to re-establish device state,
+        then execution continues from the last unfinished step."""
+        total = scenario.total_steps
+        for i, step in plan_steps(scenario.steps, start_step):
+            await self._progress(i, total, f"{step.action}: {step.name}")
             ok = await self._run_step(step, params)
             if not ok and not step.optional:
-                await self._progress(i, scenario.total_steps,
-                                     f"FAILED at step {i}: {step.name}", failed=True)
+                await self._progress(i, total, f"FAILED at step {i}: {step.name}", failed=True)
                 return False
-        await self._progress(scenario.total_steps, scenario.total_steps, "done")
+            if on_step_done and i >= start_step:
+                await on_step_done(i)          # persist highest completed original index
+        await self._progress(total, total, "done")
         return True
 
     async def _run_step(self, step: Step, params: dict[str, Any]) -> bool:
@@ -113,6 +120,19 @@ class ScenarioEngine:
                        message=msg, failed=failed)
         if self.on_progress:
             self.on_progress(step, total, msg, failed)
+
+
+def plan_steps(steps: list[Step], start_step: int) -> list[tuple[int, Step]]:
+    """Steps to execute (with their ORIGINAL indices).
+
+    Fresh run -> all steps. Resume (start_step > 0) -> idempotent `always` setup
+    steps before start_step, then everything from start_step onward.
+    """
+    if start_step <= 0:
+        return list(enumerate(steps))
+    pre = [(i, s) for i, s in enumerate(steps) if i < start_step and s.always]
+    rest = [(i, s) for i, s in enumerate(steps) if i >= start_step]
+    return pre + rest
 
 
 def _spec(target: dict[str, Any]) -> TargetSpec:

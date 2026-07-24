@@ -47,13 +47,24 @@ async def _startup() -> None:
             "ip": None, "vpn_region": d.vpn_expected_region, "profile_days_left": None,
             "point_w": d.point_w, "point_h": d.point_h,
         })
+    # Share the API token via Keychain so the native app can read it (macOS).
+    try:
+        from . import secrets
+        secrets.store_api_token(settings.api_token)
+    except Exception:
+        pass                                  # non-macOS / no Keychain: fine, use default
     scheduler.start()
-    await scheduler.recover()                 # re-queue unfinished tasks after a restart
-    asyncio.create_task(health.run_loop())    # heartbeats (mock) + recovery (real)
+    await scheduler.recover()                 # resume unfinished tasks after a restart
+    app.state.health_task = asyncio.create_task(health.run_loop())  # heartbeats/recovery
 
 
 @app.on_event("shutdown")
 async def _shutdown() -> None:
+    task = getattr(app.state, "health_task", None)
+    if task:
+        task.cancel()                        # don't leak the infinite loop (hangs teardown)
+        with contextlib.suppress(asyncio.CancelledError):
+            await task                        # await so the loop is fully torn down
     await scheduler.stop()
     await store.close()
 

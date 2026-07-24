@@ -50,6 +50,7 @@ class Store:
     async def close(self) -> None:
         if self.db:
             await self.db.close()
+            self.db = None
 
     async def upsert_device(self, d: dict[str, Any]) -> None:
         assert self.db
