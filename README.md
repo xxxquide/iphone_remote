@@ -56,11 +56,11 @@ cd native && swift run          # window + menu-bar item; talks to the running c
 3. `cp .env.example .env` and set `ORCH_MOCK=false`.
 4. `python -m core` — the Device Bridge now drives real devices.
 
-## Status: what's real vs stubbed  (v0.3.0)
-- **Real & runnable (tested in mock, `19 passed`):** core API (REST+WS), event bus,
-  SQLite store, scheduler with idempotency **+ restart re-queue of unfinished tasks**,
+## Status: what's real vs stubbed  (v0.4.0)
+- **Real & runnable (tested in mock, `26 passed`):** core API (REST+WS), event bus,
+  SQLite store, scheduler with idempotency **+ mid-step resume of unfinished tasks**,
   scenario engine + YAML, browser dashboard, mock devices/live-view, health/recovery
-  loop, bridge command construction.
+  loop, bridge command construction, **Phase 0 doctor**.
 - **Implemented (need real device / macOS to exercise):** targeting cascade —
   **OCR** via an Apple Vision Swift helper (`tools/visionocr`) + **template matching**
   (OpenCV or numpy fallback); **put_media** (video→Photos via a Shortcut + LAN media
@@ -69,13 +69,22 @@ cd native && swift run          # window + menu-bar item; talks to the running c
   capture (CoreMediaIO) with **MJPEG fallback** and click-to-tap mapped to real
   device points; **vision-LLM targeting** (cascade level 4) — screenshot+prompt →
   coordinates, with TTL cache + rate limit (off unless `ORCH_LLM_ENABLED`+key).
-- **Still stubbed (clear TODOs):** true mid-step task resume, Keychain-backed API
-  token in the native app.
+- **Still stubbed (clear TODOs):** on-device Shortcut prerequisites for put_media
+  and real-device verification live on the hardware (Phase 0).
 
 ## Tests
 ```bash
 cd core && pip install -r requirements-dev.txt
-PYTHONPATH=. pytest -q          # 13 passed — scenarios, targeting, templates, vpn, secrets, API e2e
+PYTHONPATH=. pytest tests       # 26 passed — scenarios, targeting, templates, vpn, secrets,
+                                # API e2e, vision-LLM, mid-step resume, Phase 0 doctor
+```
+
+## Phase 0 doctor
+One command validates the real-device setup (tools, devices, WDA, tunnel, TikTok
+app, config) with pass/warn/fail and a fix for each — it also flags the Xcode 26
+provisioning bug and the go-ios iOS 26.4-26.5 tunnel regression:
+```bash
+make doctor            # or: cd core && PYTHONPATH=. python -m core.phase0
 ```
 
 ## Safety / compliance
