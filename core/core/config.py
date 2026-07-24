@@ -14,23 +14,67 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 CORE_ROOT = Path(__file__).resolve().parents[1]
 
 
+def _strip_inline_comment(value: str) -> str:
+    """Drop a trailing ` # comment` from a .env value.
+
+    `.env.example` documents options inline (`ORCH_PORT=8787   # loopback only`),
+    so a naive parser would hand `int()` the whole comment. Only an UNQUOTED `#`
+    that follows whitespace starts a comment; `#` inside quotes is data, and a
+    token like `pa#ss` stays intact.
+    """
+    quote = ""
+    for i, ch in enumerate(value):
+        if quote:
+            if ch == quote:
+                quote = ""
+        elif ch in "\"'":
+            quote = ch
+        elif ch == "#" and (i == 0 or value[i - 1].isspace()):
+            return value[:i]
+    return value
+
+
+def _unquote(value: str) -> str:
+    value = value.strip()
+    if len(value) >= 2 and value[0] == value[-1] and value[0] in "\"'":
+        return value[1:-1]
+    return value
+
+
 def _load_dotenv(path: Path) -> None:
-    """Minimal .env loader (KEY=VALUE lines). No external dependency."""
+    """Minimal .env loader (KEY=VALUE lines, `export` and inline comments ok)."""
     if not path.exists():
         return
     for line in path.read_text(encoding="utf-8").splitlines():
         line = line.strip()
         if not line or line.startswith("#") or "=" not in line:
             continue
+        if line.startswith("export "):
+            line = line[len("export "):]
         key, _, val = line.partition("=")
-        os.environ.setdefault(key.strip(), val.strip().strip('"').strip("'"))
+        os.environ.setdefault(key.strip(), _unquote(_strip_inline_comment(val)))
 
 
 _load_dotenv(REPO_ROOT / ".env")
 
 
 def _bool(name: str, default: bool) -> bool:
-    return os.getenv(name, str(default)).strip().lower() in {"1", "true", "yes", "on"}
+    raw = _strip_inline_comment(os.getenv(name, str(default))).strip().lower()
+    return raw in {"1", "true", "yes", "on"}
+
+
+def _int(name: str, default: int) -> int:
+    """Tolerant int env read — never crashes the whole app on a stray comment."""
+    raw = _strip_inline_comment(os.getenv(name, "")).strip()
+    try:
+        return int(raw)
+    except ValueError:
+        return default
+
+
+def _str(name: str, default: str = "") -> str:
+    raw = os.getenv(name)
+    return _unquote(_strip_inline_comment(raw)) if raw is not None else default
 
 
 @dataclass
@@ -111,19 +155,21 @@ def _detect_lan_ip() -> str:
 
 def load_settings() -> Settings:
     s = Settings(
-        host=os.getenv("ORCH_HOST", "127.0.0.1"),
-        port=int(os.getenv("ORCH_PORT", "8787")),
+        host=_str("ORCH_HOST", "127.0.0.1"),
+        port=_int("ORCH_PORT", 8787),
         mock_mode=_bool("ORCH_MOCK", True),
-        api_token=os.getenv("ORCH_TOKEN", "dev-local-token"),
-        apple_id=os.getenv("ORCH_APPLE_ID", ""),
-        tunnel_backend=os.getenv("ORCH_TUNNEL", "pymobiledevice3"),
-        lan_host=os.getenv("ORCH_LAN_HOST", ""),
-        media_token=os.getenv("ORCH_MEDIA_TOKEN", "change-me-media-token"),
+        api_token=_str("ORCH_TOKEN", "dev-local-token"),
+        apple_id=_str("ORCH_APPLE_ID", ""),
+        tunnel_backend=_str("ORCH_TUNNEL", "pymobiledevice3"),
+        lan_host=_str("ORCH_LAN_HOST", ""),
+        media_token=_str("ORCH_MEDIA_TOKEN", "change-me-media-token"),
         llm_enabled=_bool("ORCH_LLM_ENABLED", False),
-        llm_base_url=os.getenv("ORCH_LLM_BASE_URL", "https://api.openai.com/v1"),
-        llm_model=os.getenv("ORCH_LLM_MODEL", "gpt-4o-mini"),
-        llm_api_key=os.getenv("ORCH_LLM_API_KEY", ""),
-        llm_max_per_min=int(os.getenv("ORCH_LLM_MAX_PER_MIN", "20")),
+        llm_base_url=_str("ORCH_LLM_BASE_URL", "https://api.openai.com/v1"),
+        llm_model=_str("ORCH_LLM_MODEL", "gpt-4o-mini"),
+        llm_api_key=_str("ORCH_LLM_API_KEY", ""),
+        llm_max_per_min=_int("ORCH_LLM_MAX_PER_MIN", 20),
+        wda_resign_days=_int("ORCH_WDA_RESIGN_DAYS", 6),
+        health_interval_s=_int("ORCH_HEALTH_INTERVAL_S", 10),
         devices=_load_devices(),
     )
     if not s.lan_host:
